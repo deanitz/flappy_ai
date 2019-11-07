@@ -12,9 +12,9 @@ class AI:
         self.data = list()
         self.answers = list()
 
-        self.learn_rate = 0.0002
-        self.hidden1_size = 48
-        self.hidden2_size = 128
+        self.learn_rate = 0.0001
+        self.hidden1_size = 128
+        self.hidden2_size = 512
         self.input_size = 15
 
         self.weights_01 = 2 * np.random.random((self.input_size, self.hidden1_size)) - 1
@@ -132,7 +132,7 @@ class FlappyBird:
                             pygame.image.load("assets/dead.png")]
         self.wallUp = pygame.image.load("assets/bottom.png").convert_alpha()
         self.wallDown = pygame.image.load("assets/top.png").convert_alpha()
-        self.gap = 130
+        self.gap = 300#130
         self.wallx = 400
         self.birdY = 350
         self.jump = 0
@@ -170,7 +170,7 @@ class FlappyBird:
             self.birdY += self.gravity
             self.gravity += 0.2
         self.bird[1] = self.birdY
-        """
+        
         upRect = pygame.Rect(self.wallx,
                              360 + self.gap - self.offset + 10,
                              self.wallUp.get_width() - 10,
@@ -181,7 +181,7 @@ class FlappyBird:
                                self.wallDown.get_height())
         if upRect.colliderect(self.bird) or downRect.colliderect(self.bird):
             self.dead = True
-        """
+        
         if not 0 < self.bird[1] < 720:
             self.bird[1] = 50
             self.birdY = 50
