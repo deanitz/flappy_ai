@@ -5,17 +5,17 @@ import random
 import numpy as np
 from collections import deque
 
-np.random.seed(1)
+#np.random.seed(1)
 
 class AI:
     def __init__(self):
         self.data = list()
         self.answers = list()
 
-        self.learn_rate = 0.0001
-        self.hidden1_size = 128
-        self.hidden2_size = 512
-        self.input_size = 15
+        self.learn_rate = 0.001
+        self.hidden1_size = 333
+        self.hidden2_size = 12
+        self.input_size = 30
 
         self.weights_01 = 2 * np.random.random((self.input_size, self.hidden1_size)) - 1
         self.weights_12 = 2 * np.random.random((self.hidden1_size,self.hidden2_size)) - 1
@@ -147,7 +147,7 @@ class FlappyBird:
         self.frame = 0
         self.iteration = 0
         initGI = self.getGameInfoForAi()
-        self.prevGameInfo = deque([initGI,initGI,initGI,initGI])
+        self.prevGameInfo = deque([initGI,initGI,initGI,initGI,initGI,initGI,initGI,initGI,initGI])
         self.lastAiCommand = 0.
         self.framerate = 1000
 
@@ -204,7 +204,7 @@ class FlappyBird:
         if (self.frame >= self.framerate):
             self.frame = 0
         
-        if((self.frame % 2) == 0 and not self.dead):
+        if((self.frame % 3) == 0 and not self.dead):
             new_info = self.getGameInfoForAi()
             lst = list(self.prevGameInfo)
             gameInfo = list(np.array(lst).flatten()) + list(new_info)
