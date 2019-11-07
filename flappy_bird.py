@@ -10,6 +10,7 @@ class AI:
 
     def addGameData(self, new_data):
         self.data.append(new_data)
+        sys.stdout.write("                                           \r"+ str(new_data))
         self.printAiInfo()
     
     def printAiInfo(self):
@@ -44,6 +45,7 @@ class FlappyBird:
         self.ai = AI()
         self.frame = 0
         self.iteration = 0
+        self.prevGameInfo = self.getGameInfoForAi()
 
     def updateWalls(self):
         self.wallx -= 2
@@ -94,9 +96,15 @@ class FlappyBird:
         if (self.frame >= 60):
             self.frame = 0
         
-        if(self.frame%10==0 and not self.dead):
-            gameInfo = [self.birdY, self.wallx, self.offset, self.gravity, self.jump]
+        if(self.frame%5==0 and not self.dead):
+            new_info = self.getGameInfoForAi()
+            gameInfo = [self.prevGameInfo, new_info]
             self.ai.addGameData(gameInfo)
+            self.prevGameInfo = new_info
+            
+
+    def getGameInfoForAi(self):
+        return [self.birdY / 1000, (self.wallx + 200) / 1000,  (self.offset + 100) / 200, self.gravity / 10, self.jump / 20]
 
     def run(self):
         clock = pygame.time.Clock()
