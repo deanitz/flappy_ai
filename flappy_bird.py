@@ -3,16 +3,19 @@ from pygame.locals import *  # noqa
 import sys
 import random
 import numpy as np
+from collections import deque
+
+np.random.seed(1)
 
 class AI:
     def __init__(self):
         self.data = list()
         self.answers = list()
 
-        self.learn_rate = 0.011
+        self.learn_rate = 0.0002
         self.hidden1_size = 48
         self.hidden2_size = 128
-        self.input_size = 6
+        self.input_size = 15
 
         self.weights_01 = 2 * np.random.random((self.input_size, self.hidden1_size)) - 1
         self.weights_12 = 2 * np.random.random((self.hidden1_size,self.hidden2_size)) - 1
@@ -59,8 +62,13 @@ class AI:
         layer_3_error = 0
         
         batch_len = len(self.answers)
-        error_power = (1 / np.log(batch_len**2))
-        endorse_power = np.log(batch_len) if is_positive else 1
+        batch_len = batch_len if batch_len > 0 else 1
+        magic = np.log((batch_len/13)**2)
+        magic = magic if magic > 0 else 1
+        endorse_power = magic if is_positive else 1
+        #print(batch_len)
+        #print(error_power)
+        #print(endorse_power)
         for i in range(batch_len):
             layer_0 = np.array(self.data[i:i+1])
             layers =  self.calcLayers(layer_0)
@@ -78,7 +86,7 @@ class AI:
             layer_3 = layers[2]
 
             goal = self.answers[i:i+1][0]
-            goal = goal if is_positive else (-goal) * error_power
+            goal = goal if is_positive else (-goal)
 
             layer_3_error += self.error_func(layer_3, [goal])
             
@@ -138,9 +146,10 @@ class FlappyBird:
         self.ai = AI()
         self.frame = 0
         self.iteration = 0
-        self.prevGameInfo = self.getGameInfoForAi()
+        initGI = self.getGameInfoForAi()
+        self.prevGameInfo = deque([initGI,initGI,initGI,initGI])
         self.lastAiCommand = 0.
-        self.framerate = 60
+        self.framerate = 1000
 
     def updateWalls(self):
         self.wallx -= 2
@@ -195,11 +204,15 @@ class FlappyBird:
         if (self.frame >= self.framerate):
             self.frame = 0
         
-        if((self.frame % 5) == 0 and not self.dead):
+        if((self.frame % 2) == 0 and not self.dead):
             new_info = self.getGameInfoForAi()
-            gameInfo = self.prevGameInfo + new_info
+            lst = list(self.prevGameInfo)
+            gameInfo = list(np.array(lst).flatten()) + list(new_info)
+            self.prevGameInfo.rotate()
+            self.prevGameInfo.popleft()
+            self.prevGameInfo.append(new_info)
+
             self.lastAiCommand = self.ai.addGameData(gameInfo)
-            self.prevGameInfo = new_info
             
 
     def getGameInfoForAi(self):
