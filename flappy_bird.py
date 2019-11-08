@@ -12,10 +12,13 @@ class AI:
         self.data = list()
         self.answers = list()
 
-        self.hidden1_size = 122
-        self.hidden2_size = 1850
-        self.hidden3_size = 4
+        self.hidden1_size = 400
+        self.hidden2_size = 384
+        self.hidden3_size = 121
+        self.hidden4_size = 77
+        self.hidden5_size = 2
         self.input_size = 40
+        self.output_size = 1
 
         self.maxScore = 0
         self.createNewAi()
@@ -28,12 +31,14 @@ class AI:
         self.weights_01_prev = 2 * np.random.random((self.input_size, self.hidden1_size)) - 1
         self.weights_12_prev = 2 * np.random.random((self.hidden1_size,self.hidden2_size)) - 1
         self.weights_23_prev = 2 * np.random.random((self.hidden2_size,self.hidden3_size)) - 1
-        self.weights_34_prev = 2 * np.random.random((self.hidden3_size,1)) - 1
+        self.weights_34_prev = 2 * np.random.random((self.hidden3_size,self.hidden4_size)) - 1
+        self.weights_45_prev = 2 * np.random.random((self.hidden4_size,self.hidden5_size)) - 1
+        self.weights_56_prev = 2 * np.random.random((self.hidden5_size,self.output_size)) - 1
 
     def createNewAi(self):
         
-        self.learn_rate = 0.00002
-        self.learn_rate_coef = 0.000005
+        self.learn_rate = 0.0005
+        self.learn_rate_coef = 1000
 
         if(self.maxScore > 2):
             print("restoring successful AI")
@@ -41,17 +46,18 @@ class AI:
             self.weights_12 = self.weights_12_prev
             self.weights_23 = self.weights_23_prev
             self.weights_34 = self.weights_34_prev
+            self.weights_45 = self.weights_45_prev
+            self.weights_56 = self.weights_56_prev
         else:
             print("creating new AI")
             self.weights_01 = 2 * np.random.random((self.input_size, self.hidden1_size)) - 1
             self.weights_12 = 2 * np.random.random((self.hidden1_size,self.hidden2_size)) - 1
             self.weights_23 = 2 * np.random.random((self.hidden2_size,self.hidden3_size)) - 1
-            self.weights_34 = 2 * np.random.random((self.hidden3_size,1)) - 1
+            self.weights_34 = 2 * np.random.random((self.hidden3_size,self.hidden4_size)) - 1
+            self.weights_45 = 2 * np.random.random((self.hidden4_size,self.hidden5_size)) - 1
+            self.weights_56 = 2 * np.random.random((self.hidden5_size,self.output_size)) - 1
 
         self.maxScore = 0
-
-        
-
         
     def addGameData(self, new_data):
         
@@ -65,6 +71,7 @@ class AI:
             self.answers.append(prog)
             return prog
         else:
+            print("oops!prog")
             return 0
     
     def makeProg(self, data):
@@ -78,8 +85,10 @@ class AI:
         layer_1 = self.activation_func(np.dot(layer_0, self.weights_01))
         layer_2 = self.activation_func(np.dot(layer_1, self.weights_12))
         layer_3 = self.activation_func(np.dot(layer_2, self.weights_23))
-        layer_4 = self.output_func(np.dot(layer_3, self.weights_34))
-        return (layer_1,layer_2,layer_3,layer_4)
+        layer_4 = self.activation_func(np.dot(layer_3, self.weights_34))
+        layer_5 = self.activation_func(np.dot(layer_4, self.weights_45))
+        layer_6 = self.output_func(np.dot(layer_5, self.weights_56))
+        return (layer_1,layer_2,layer_3,layer_4,layer_5,layer_6)
     
     def printAiInfo(self):
         print(self.learn_rate)
@@ -96,9 +105,10 @@ class AI:
         
         batch_len = len(self.answers)
         batch_len = batch_len if batch_len > 0 else 1
-        magic = 1 + np.log((batch_len/13)**2)
+        magic = (np.log((batch_len/13)**2))
         score = 1 + score / 100
         endorse_power = magic * score if is_positive else score
+        print(endorse_power)
         
         #print(batch_len)
         #print(error_power)
@@ -109,34 +119,47 @@ class AI:
             layers =  self.calcLayers(layer_0)
 
             if (len(layers) <= 0):
+                print("oops!train")
                 return
 
             layer_1 = layers[0]
-
-            dropout_mask = np.random.randint(2,size=layer_1.shape)
-            layer_1 *= dropout_mask * 2
-
             layer_2 = layers[1]
-            dropout_mask = np.random.randint(2,size=layer_2.shape)
-            layer_2 *= dropout_mask * 2
-
             layer_3 = layers[2]
-            dropout_mask = np.random.randint(2,size=layer_3.shape)
-            layer_3 *= dropout_mask * 2
-
             layer_4 = layers[3]
+            layer_5 = layers[4]
+            layer_6 = layers[5]
+
+            if not is_positive or (is_positive and not i % 2 == 0):
+                dropout_mask = np.random.randint(2,size=layer_1.shape)
+                layer_1 *= dropout_mask * 2
+                
+                dropout_mask = np.random.randint(2,size=layer_2.shape)
+                layer_2 *= dropout_mask * 2
+                
+                dropout_mask = np.random.randint(2,size=layer_3.shape)
+                layer_3 *= dropout_mask * 2
+                
+                dropout_mask = np.random.randint(2,size=layer_4.shape)
+                layer_4 *= dropout_mask * 2
+                
+                dropout_mask = np.random.randint(2,size=layer_5.shape)
+                layer_5 *= dropout_mask * 2
+
+            
 
             goal = self.answers[i:i+1][0]
-            goal = goal if is_positive else (-goal)
+            goal = goal if ((is_positive)) else (goal * np.random.rand(1)[0] - goal)
 
-            layer_output_error += self.error_func(layer_4, [goal])
+            layer_output_error += self.error_func(layer_6, [goal])
             
             #производная от среднеквадратического отклонения - скаляр
-            layer_4_delta = (layer_4 - goal)
+            layer_6_delta = (layer_6 - goal)
             
             #back propagation func:
             #поэлементное произведение весов последнего скрытого слоя (рез. - вектор длины скрытого слоя)
             #умноженное на производную от функции активации
+            layer_5_delta = layer_6_delta.dot(self.weights_56.T) * self.activation_func_deriv(layer_5)
+            layer_4_delta = layer_5_delta.dot(self.weights_45.T) * self.activation_func_deriv(layer_4)
             layer_3_delta = layer_4_delta.dot(self.weights_34.T) * self.activation_func_deriv(layer_3)
             layer_2_delta = layer_3_delta.dot(self.weights_23.T) * self.activation_func_deriv(layer_2)
             layer_1_delta = layer_2_delta.dot(self.weights_12.T) * self.activation_func_deriv(layer_1)
@@ -146,31 +169,27 @@ class AI:
                 self.weights_12_prev = self.weights_12
                 self.weights_23_prev = self.weights_23
                 self.weights_34_prev = self.weights_34
-
-
+                self.weights_45_prev = self.weights_45
+                self.weights_56_prev = self.weights_56
 
                 self.maxScore = score
 
             amp =  self.learn_rate * endorse_power
-            if (not is_positive):
-                amp *= 0.6      
-            if (not (not is_positive and ((i % 10) != 0))):
-                self.weights_34 -= amp * layer_3.T.dot(layer_4_delta)
-                self.weights_23 -= amp * layer_2.T.dot(layer_3_delta)
-                self.weights_12 -= amp * layer_1.T.dot(layer_2_delta)
-                self.weights_01 -= amp * layer_0.T.dot(layer_1_delta)
 
-            
-
-                
+            self.weights_56 -= amp * layer_5.T.dot(layer_6_delta)
+            self.weights_45 -= amp * layer_4.T.dot(layer_5_delta)
+            self.weights_34 -= amp * layer_3.T.dot(layer_4_delta)
+            self.weights_23 -= amp * layer_2.T.dot(layer_3_delta)
+            self.weights_12 -= amp * layer_1.T.dot(layer_2_delta)
+            self.weights_01 -= amp * layer_0.T.dot(layer_1_delta)
 
         if (is_positive):
-            self.learn_rate -= (self.learn_rate_coef)
+            self.learn_rate -= (self.learn_rate / self.learn_rate_coef)
         else:
-            self.learn_rate += (self.learn_rate_coef / 100)
+            self.learn_rate += (self.learn_rate / self.learn_rate_coef / 10)
 
         #print("learn: " + str(self.learn_rate))
-        #print("error: " + str(layer_output_error))
+        print("error: " + str(layer_output_error))
     
     def tanh(self,x):
         return np.tanh(x)
@@ -196,7 +215,7 @@ class FlappyBird:
                             pygame.image.load("assets/dead.png")]
         self.wallUp = pygame.image.load("assets/bottom.png").convert_alpha()
         self.wallDown = pygame.image.load("assets/top.png").convert_alpha()
-        self.gap = 500  #500 ez #130 hard real game
+        self.gap = 300  #300 ez #130 hard real game
         self.wallx = 400
         self.birdY = 350
         self.jump = 0
@@ -230,8 +249,8 @@ class FlappyBird:
                 self.maxScore = np.max([self.counter, self.maxScore])
                 self.iterateAiCycle(False)
                 # !!!!!
-                initGI = self.getGameInfoForAi()
-                self.prevGameInfo = deque([initGI,initGI,initGI,initGI,initGI,initGI,initGI,initGI,initGI])
+                #initGI = self.getGameInfoForAi()
+                #self.prevGameInfo = deque([initGI,initGI,initGI,initGI,initGI,initGI,initGI,initGI,initGI])
 
     def birdUpdate(self):
         if self.jump:
