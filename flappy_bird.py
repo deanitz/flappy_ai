@@ -12,9 +12,9 @@ class AI:
         self.data = list()
         self.answers = list()
 
-        self.hidden1_size = 256
-        self.hidden2_size = 128
-        self.hidden3_size = 64
+        self.hidden1_size = 60
+        self.hidden2_size = 300
+        self.hidden3_size = 18
         self.input_size = 30
 
         self.createNewAi()
@@ -25,7 +25,7 @@ class AI:
         self.error_func = self.avg_square_error
 
     def createNewAi(self):
-        self.learn_rate = 0.001
+        self.learn_rate = 0.00005
         self.weights_01 = 2 * np.random.random((self.input_size, self.hidden1_size)) - 1
         self.weights_12 = 2 * np.random.random((self.hidden1_size,self.hidden2_size)) - 1
         self.weights_23 = 2 * np.random.random((self.hidden2_size,self.hidden3_size)) - 1
@@ -59,25 +59,26 @@ class AI:
         return
         #print(len(self.data))
 
-    def iterateCycle(self, is_dead):
-        self.trainBatch(not is_dead)
+    def iterateCycle(self, is_dead, score):
+        self.trainBatch(not is_dead, score)
         self.data.clear()
         self.answers.clear()
         #print("dead" if is_dead else "alive")
 
-    def trainBatch(self, is_positive):
+    def trainBatch(self, is_positive, score):
         layer_output_error = 0
         
         batch_len = len(self.answers)
         batch_len = batch_len if batch_len > 0 else 1
         magic = np.log((batch_len/13)**2)
         magic = magic if magic > 0 else 1
-        endorse_power = magic if is_positive else 1
+        score = 1 + score / 100
+        endorse_power = magic * score if is_positive else score
         
         #print(batch_len)
         #print(error_power)
         #print(endorse_power)
-        for i in range(batch_len):
+        for i in range(10 if is_positive else 0, batch_len): #10 first are stubbed data
             
             layer_0 = np.array(self.data[i:i+1])
             layers =  self.calcLayers(layer_0)
@@ -170,7 +171,7 @@ class FlappyBird:
         initGI = self.getGameInfoForAi()
         self.prevGameInfo = deque([initGI,initGI,initGI,initGI,initGI,initGI,initGI,initGI,initGI])
         self.lastAiCommand = 0.
-        self.framerate = 1000
+        self.framerate = 10000
         self.maxScore = 0
 
     def updateWalls(self):
@@ -221,7 +222,7 @@ class FlappyBird:
     def iterateAiCycle(self, is_dead):
         self.iteration += 1
         if (self.maxScore < 30):
-            self.ai.iterateCycle(is_dead)
+            self.ai.iterateCycle(is_dead, self.counter)
         every = 1000
         if (self.iteration % every == 0) and (self.maxScore < self.iteration / every) and self.maxScore < 30:
             self.ai.createNewAi()
@@ -234,7 +235,7 @@ class FlappyBird:
         if (self.frame >= self.framerate):
             self.frame = 0
         
-        if((self.frame % 4) == 0 and not self.dead):
+        if((self.frame % 1) == 0 and not self.dead):
             new_info = self.getGameInfoForAi()
             lst = list(self.prevGameInfo)
             gameInfo = list(np.array(lst).flatten()) + list(new_info)
