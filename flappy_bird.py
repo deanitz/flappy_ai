@@ -12,25 +12,44 @@ class AI:
         self.data = list()
         self.answers = list()
 
-        self.hidden1_size = 60
-        self.hidden2_size = 300
-        self.hidden3_size = 18
-        self.input_size = 30
+        self.hidden1_size = 160
+        self.hidden2_size = 410
+        self.hidden3_size = 12
+        self.input_size = 40
 
+        self.maxScore = 0
         self.createNewAi()
 
         self.activation_func = self.tanh
         self.activation_func_deriv = self.tanh2deriv
         self.output_func = lambda x: x
         self.error_func = self.avg_square_error
+        
+        self.weights_01_prev = 2 * np.random.random((self.input_size, self.hidden1_size)) - 1
+        self.weights_12_prev = 2 * np.random.random((self.hidden1_size,self.hidden2_size)) - 1
+        self.weights_23_prev = 2 * np.random.random((self.hidden2_size,self.hidden3_size)) - 1
+        self.weights_34_prev = 2 * np.random.random((self.hidden3_size,1)) - 1
 
     def createNewAi(self):
+        
         self.learn_rate = 0.00005
-        self.weights_01 = 2 * np.random.random((self.input_size, self.hidden1_size)) - 1
-        self.weights_12 = 2 * np.random.random((self.hidden1_size,self.hidden2_size)) - 1
-        self.weights_23 = 2 * np.random.random((self.hidden2_size,self.hidden3_size)) - 1
-        self.weights_34 = 2 * np.random.random((self.hidden3_size,1)) - 1
-        print("creating new AI")
+
+        if(self.maxScore > 2):
+            print("restoring successful AI")
+            self.weights_01 = self.weights_01_prev
+            self.weights_12 = self.weights_12_prev
+            self.weights_23 = self.weights_23_prev
+            self.weights_34 = self.weights_34_prev
+        else:
+            print("creating new AI")
+            self.weights_01 = 2 * np.random.random((self.input_size, self.hidden1_size)) - 1
+            self.weights_12 = 2 * np.random.random((self.hidden1_size,self.hidden2_size)) - 1
+            self.weights_23 = 2 * np.random.random((self.hidden2_size,self.hidden3_size)) - 1
+            self.weights_34 = 2 * np.random.random((self.hidden3_size,1)) - 1
+
+        self.maxScore = 0
+
+        
 
         
     def addGameData(self, new_data):
@@ -115,17 +134,30 @@ class AI:
             layer_2_delta = layer_3_delta.dot(self.weights_23.T) * self.activation_func_deriv(layer_2)
             layer_1_delta = layer_2_delta.dot(self.weights_12.T) * self.activation_func_deriv(layer_1)
 
-            amp =  self.learn_rate* endorse_power          
-            if (not (is_positive and ((i % 10) != 0))):
+            if (score > self.maxScore):
+                self.weights_01_prev = self.weights_01
+                self.weights_12_prev = self.weights_12
+                self.weights_23_prev = self.weights_23
+                self.weights_34_prev = self.weights_34
+                self.maxScore = score
+
+            amp =  self.learn_rate * endorse_power
+            if (not is_positive):
+                amp *= 0.6      
+            if (not (not is_positive and ((i % 10) != 0))):
                 self.weights_34 -= amp * layer_3.T.dot(layer_4_delta)
                 self.weights_23 -= amp * layer_2.T.dot(layer_3_delta)
                 self.weights_12 -= amp * layer_1.T.dot(layer_2_delta)
                 self.weights_01 -= amp * layer_0.T.dot(layer_1_delta)
+
+            
+
                 
 
-        # if (is_positive):
-        #     self.learn_rate -= self.learn_rate / (batch_len if batch_len > 100 else 100 / 10) / 1000
-        #     print(self.learn_rate)
+        if (is_positive):
+            self.learn_rate -= self.learn_rate / 1000
+        else:
+            self.learn_rate += self.learn_rate / 10000
 
         #print(self.answers)
         #print("error: " + str(layer_3_error))
@@ -182,6 +214,8 @@ class FlappyBird:
 
             if not self.dead:
                 self.counter += 1
+                if self.counter%20 == 0 and self.gap > 130:
+                    self.gap -= 10
                 self.maxScore = np.max([self.counter, self.maxScore])
                 self.iterateAiCycle(False)
 
@@ -208,7 +242,7 @@ class FlappyBird:
         
         if not 0 < self.bird[1] < 720:
             self.bird[1] = 50
-            self.birdY = 50
+            self.birdY = 350
             self.dead = False
             if self.counter > 0:
                 print("score: " + str(self.counter))
@@ -223,8 +257,8 @@ class FlappyBird:
         self.iteration += 1
         if (self.maxScore < 30):
             self.ai.iterateCycle(is_dead, self.counter)
-        every = 1000
-        if (self.iteration % every == 0) and (self.maxScore < self.iteration / every) and self.maxScore < 30:
+        every = 500
+        if (self.iteration % every == 0) and (self.maxScore < (self.iteration / every)) and self.maxScore < 30:
             self.ai.createNewAi()
             self.iteration = 0
             self.maxScore = 0
@@ -247,7 +281,7 @@ class FlappyBird:
             
 
     def getGameInfoForAi(self):
-        return [self.birdY / 600, (self.wallx + 200) / 1000,  (self.offset + 100) / 200]
+        return [self.birdY / 600, (self.wallx + 200) / 1000,  (self.offset + 100) / 200, (self.offset + self.gap + 100) / 200]
 
     def run(self):
         clock = pygame.time.Clock()
@@ -269,6 +303,13 @@ class FlappyBird:
                     self.jumpSpeed = 10
 
             """
+            
+            if (event.type == pygame.KEYDOWN or event.type == pygame.MOUSEBUTTONDOWN):
+                if(self.framerate < 1000):
+                    self.framerate = 1000
+                else:
+                    self.framerate = 60
+
             if(self.lastAiCommand > 0 and not self.dead):
                 self.jump = 17
                 self.gravity = 5
