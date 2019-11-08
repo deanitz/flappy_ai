@@ -12,19 +12,25 @@ class AI:
         self.data = list()
         self.answers = list()
 
-        self.learn_rate = 0.001
-        self.hidden1_size = 333
-        self.hidden2_size = 12
+        self.hidden1_size = 256
+        self.hidden2_size = 128
+        self.hidden3_size = 64
         self.input_size = 30
 
-        self.weights_01 = 2 * np.random.random((self.input_size, self.hidden1_size)) - 1
-        self.weights_12 = 2 * np.random.random((self.hidden1_size,self.hidden2_size)) - 1
-        self.weights_23 = 2 * np.random.random((self.hidden2_size,1)) - 1
+        self.createNewAi()
 
         self.activation_func = self.tanh
         self.activation_func_deriv = self.tanh2deriv
         self.output_func = lambda x: x
         self.error_func = self.avg_square_error
+
+    def createNewAi(self):
+        self.learn_rate = 0.001
+        self.weights_01 = 2 * np.random.random((self.input_size, self.hidden1_size)) - 1
+        self.weights_12 = 2 * np.random.random((self.hidden1_size,self.hidden2_size)) - 1
+        self.weights_23 = 2 * np.random.random((self.hidden2_size,self.hidden3_size)) - 1
+        self.weights_34 = 2 * np.random.random((self.hidden3_size,1)) - 1
+        print("creating new AI")
 
         
     def addGameData(self, new_data):
@@ -45,8 +51,9 @@ class AI:
     def calcLayers(self, layer_0):
         layer_1 = self.activation_func(np.dot(layer_0, self.weights_01))
         layer_2 = self.activation_func(np.dot(layer_1, self.weights_12))
-        layer_3 = self.output_func(np.dot(layer_2, self.weights_23))
-        return (layer_1,layer_2,layer_3)
+        layer_3 = self.activation_func(np.dot(layer_2, self.weights_23))
+        layer_4 = self.output_func(np.dot(layer_3, self.weights_34))
+        return (layer_1,layer_2,layer_3,layer_4)
     
     def printAiInfo(self):
         return
@@ -59,17 +66,19 @@ class AI:
         #print("dead" if is_dead else "alive")
 
     def trainBatch(self, is_positive):
-        layer_3_error = 0
+        layer_output_error = 0
         
         batch_len = len(self.answers)
         batch_len = batch_len if batch_len > 0 else 1
         magic = np.log((batch_len/13)**2)
         magic = magic if magic > 0 else 1
         endorse_power = magic if is_positive else 1
+        
         #print(batch_len)
         #print(error_power)
         #print(endorse_power)
         for i in range(batch_len):
+            
             layer_0 = np.array(self.data[i:i+1])
             layers =  self.calcLayers(layer_0)
             layer_1 = layers[0]
@@ -84,26 +93,38 @@ class AI:
                 layer_2 *= dropout_mask * 2
 
             layer_3 = layers[2]
+            if (not is_positive):
+                dropout_mask = np.random.randint(2,size=layer_3.shape)
+                layer_3 *= dropout_mask * 2
+
+            layer_4 = layers[3]
 
             goal = self.answers[i:i+1][0]
             goal = goal if is_positive else (-goal)
 
-            layer_3_error += self.error_func(layer_3, [goal])
+            layer_output_error += self.error_func(layer_4, [goal])
             
             #производная от среднеквадратического отклонения - скаляр
-            layer_3_delta = layer_3 - goal 
+            layer_4_delta = (layer_4 - goal)
             
             #back propagation func:
             #поэлементное произведение весов последнего скрытого слоя (рез. - вектор длины скрытого слоя)
             #умноженное на производную от функции активации
-            layer_2_delta = layer_3_delta * self.weights_23.T * self.activation_func_deriv(layer_2)
+            layer_3_delta = layer_4_delta * self.weights_34.T * self.activation_func_deriv(layer_3)
+            layer_2_delta = layer_3_delta.dot(self.weights_23.T) * self.activation_func_deriv(layer_2)
+            layer_1_delta = layer_2_delta.dot(self.weights_12.T) * self.activation_func_deriv(layer_1)
 
-            layer_1_delta = layer_2_delta.dot(self.weights_12.T.dot(self.activation_func_deriv(layer_1.T)))
-            
-            
-            self.weights_23 -= self.learn_rate * layer_2.T.dot(layer_3_delta) * endorse_power
-            self.weights_12 -= self.learn_rate * layer_1.T.dot(layer_2_delta) * endorse_power
-            self.weights_01 -= self.learn_rate * layer_0.T.dot(layer_1_delta) * endorse_power
+            amp =  self.learn_rate* endorse_power          
+            if (not (is_positive and ((i % 10) != 0))):
+                self.weights_34 -= amp * layer_3.T.dot(layer_4_delta)
+                self.weights_23 -= amp * layer_2.T.dot(layer_3_delta)
+                self.weights_12 -= amp * layer_1.T.dot(layer_2_delta)
+                self.weights_01 -= amp * layer_0.T.dot(layer_1_delta)
+                
+
+        # if (is_positive):
+        #     self.learn_rate -= self.learn_rate / (batch_len if batch_len > 100 else 100 / 10) / 1000
+        #     print(self.learn_rate)
 
         #print(self.answers)
         #print("error: " + str(layer_3_error))
@@ -132,7 +153,7 @@ class FlappyBird:
                             pygame.image.load("assets/dead.png")]
         self.wallUp = pygame.image.load("assets/bottom.png").convert_alpha()
         self.wallDown = pygame.image.load("assets/top.png").convert_alpha()
-        self.gap = 300#130
+        self.gap = 200  #300 ez #130 hard
         self.wallx = 400
         self.birdY = 350
         self.jump = 0
@@ -150,6 +171,7 @@ class FlappyBird:
         self.prevGameInfo = deque([initGI,initGI,initGI,initGI,initGI,initGI,initGI,initGI,initGI])
         self.lastAiCommand = 0.
         self.framerate = 1000
+        self.maxScore = 0
 
     def updateWalls(self):
         self.wallx -= 2
@@ -159,6 +181,7 @@ class FlappyBird:
 
             if not self.dead:
                 self.counter += 1
+                self.maxScore = np.max([self.counter, self.maxScore])
                 self.iterateAiCycle(False)
 
     def birdUpdate(self):
@@ -197,14 +220,21 @@ class FlappyBird:
 
     def iterateAiCycle(self, is_dead):
         self.iteration += 1
-        self.ai.iterateCycle(is_dead)
+        if (self.maxScore < 30):
+            self.ai.iterateCycle(is_dead)
+        every = 1000
+        if (self.iteration % every == 0) and (self.maxScore < self.iteration / every) and self.maxScore < 30:
+            self.ai.createNewAi()
+            self.iteration = 0
+            self.maxScore = 0
+        
 
     def updateAi(self):
         self.frame += 1
         if (self.frame >= self.framerate):
             self.frame = 0
         
-        if((self.frame % 3) == 0 and not self.dead):
+        if((self.frame % 4) == 0 and not self.dead):
             new_info = self.getGameInfoForAi()
             lst = list(self.prevGameInfo)
             gameInfo = list(np.array(lst).flatten()) + list(new_info)
@@ -216,7 +246,7 @@ class FlappyBird:
             
 
     def getGameInfoForAi(self):
-        return [self.birdY / 1000, (self.wallx + 200) / 1000,  (self.offset + 100) / 200]
+        return [self.birdY / 600, (self.wallx + 200) / 1000,  (self.offset + 100) / 200]
 
     def run(self):
         clock = pygame.time.Clock()
