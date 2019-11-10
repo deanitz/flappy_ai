@@ -13,11 +13,11 @@ class AI:
         self.answers = list()
 
         self.hidden1_size = 512
-        self.hidden2_size = 128
-        self.hidden3_size = 2
+        self.hidden2_size = 32
+        self.hidden3_size = 16
         #self.hidden4_size = 64
         #self.hidden5_size = 12
-        self.input_size = 6
+        self.input_size = 5
         self.output_size = 1
 
         self.maxScore = 0
@@ -40,8 +40,8 @@ class AI:
     def createNewAi(self):
         
         self.learn_rate = 0.00005
-        self.teach_tries = 1
-        self.successful_batches = deque(maxlen=50)
+        self.teach_tries = 10
+        self.successful_batches = deque(maxlen=100)
         self.best_batch = deque(maxlen=1)
         self.avg_error = 0
 
@@ -56,9 +56,9 @@ class AI:
             #self.weights_56 = self.weights_56_prev
         else:
             print("creating new AI")
-            self.weights_01 = 2*np.random.random((self.input_size, self.hidden1_size)) - 1
-            self.weights_12 = 2*np.random.random((self.hidden1_size,self.hidden2_size)) - 1
-            self.weights_23 = 2*np.random.random((self.hidden2_size,self.hidden3_size)) - 1
+            self.weights_01 = 0.2*np.random.random((self.input_size, self.hidden1_size)) - 1
+            self.weights_12 = 1*np.random.random((self.hidden1_size,self.hidden2_size)) - 0.5
+            self.weights_23 = 1*np.random.random((self.hidden2_size,self.hidden3_size)) - 0.5
             self.weights_34 = 2*np.random.random((self.hidden3_size,self.output_size)) - 1
             #self.weights_45 = np.random.random((self.hidden4_size,self.hidden5_size)) - 0.5
             #self.weights_56 = np.random.random((self.hidden5_size,self.output_size)) - 0.5
@@ -113,13 +113,13 @@ class AI:
         if is_dead:
             for _ in range(self.teach_tries):
                 for (success_data, success_answer) in self.successful_batches:
-                    self.trainBatch(False, 1, success_data, success_answer)
+                    self.trainBatch(True, 0.1, success_data, success_answer)
 
             # if(len(self.successful_batches) == 0):
             #     for (success_data, success_answer) in self.best_batch:
             #         self.trainBatch(False, 1, success_data, success_answer)
         else:
-            if self.maxScore < 10 or score >= 10:
+            if (self.maxScore < 10 and score > 2) or score >= 10:
                 self.successful_batches.append( (self.data.copy(), self.answers.copy()) )
 
         self.data.clear()
@@ -132,8 +132,7 @@ class AI:
         batch_len = len(train_anwers)
         batch_len = batch_len if batch_len > 0 else 1
         magic = (np.log((batch_len/13)**2))
-        score = 1 + score / 100
-        endorse_power = magic * score if is_positive else score
+        endorse_power = magic * (1 + score / 100) if is_positive else  1 + score / 100
         #print(endorse_power)
 
         amp = self.learn_rate if score == 0 else self.learn_rate / 2
@@ -206,9 +205,9 @@ class AI:
             #self.weights_56 -= amp * layer_5.T.dot(layer_6_delta)
             #self.weights_45 -= (amp / 50) * layer_4.T.dot(layer_5_delta)
             self.weights_34 -= (amp) * layer_3.T.dot(layer_4_delta)
-            self.weights_23 -= (amp) * layer_2.T.dot(layer_3_delta)
-            self.weights_12 -= (amp) * layer_1.T.dot(layer_2_delta)
-            self.weights_01 -= (amp/10) * layer_0.T.dot(layer_1_delta)
+            self.weights_23 -= (amp * 0.5) * layer_2.T.dot(layer_3_delta)
+            self.weights_12 -= (amp * 0.5) * layer_1.T.dot(layer_2_delta)
+            self.weights_01 -= (amp * 0.05) * layer_0.T.dot(layer_1_delta)
 
         #print("learn: " + str(self.learn_rate))
         #print("error: " + str(layer_output_error))
@@ -253,7 +252,8 @@ class FlappyBird:
         self.ai = AI()
         self.frame = 0
         self.iteration = 0
-        self.prevGameInfo = deque([self.getGameInfoForAi(0)])
+        self.prevGameInfo = deque(maxlen=1)
+        self.resetGameInfo()
         self.lastAiCommand = 0.
         self.framerate = 10000
         self.maxScore = 0
@@ -311,7 +311,7 @@ class FlappyBird:
     def iterateAiCycle(self, is_dead):
         self.iteration += 1
         self.ai.iterateCycle(is_dead, self.counter)
-        every = 1000
+        every = 300
         if (self.iteration % every == 0) and (self.maxScore < (self.iteration / every)):
             self.ai.createNewAi()
             self.iteration = 0
@@ -325,17 +325,18 @@ class FlappyBird:
         
         if((self.frame % 5) == 0 and not self.dead):
             new_info = self.getGameInfoForAi(0)
-            lst = list(self.prevGameInfo)
-            gameInfo = list(np.array(lst).flatten()) + list(new_info)
-            self.prevGameInfo.rotate()
-            self.prevGameInfo.popleft()
             self.prevGameInfo.append(new_info)
 
-            self.lastAiCommand = self.ai.addGameData(gameInfo)
+            self.lastAiCommand = self.ai.addGameData(np.array(list(self.prevGameInfo.copy())).flatten())
+
+    def resetGameInfo(self):
+        self.prevGameInfo.clear()
+        for i in range(self.prevGameInfo.maxlen):
+            self.prevGameInfo.append(self.getGameInfoForAi(i*2))
             
 
     def getGameInfoForAi(self, wall_x_fix):
-        return [(self.birdY) / 1000,  (self.offset + self.gap / 2) / 1000, (self.wallx / 1000)]
+        return [(self.birdY) / 1000,  (self.birdY - (self.offset + self.gap / 2)) / 1000, (self.offset + self.gap) / 1000,  (self.offset) / 1000, (self.wallx / 1000)]
 
     def run(self):
         clock = pygame.time.Clock()
