@@ -21,7 +21,7 @@ class AI:
         self.output_size = 1
 
         self.maxScore = 0
-        self.trainOn = True
+        self.trainOn = False
         self.successful_batches = deque(maxlen=100)
         self.failed_batches = deque(maxlen=100)
         self.createNewAi()
@@ -152,7 +152,7 @@ class AI:
             #     for (success_data, success_answer) in self.best_batch:
             #         self.trainBatch(False, 1, success_data, success_answer)
         else:
-            if (self.maxScore < 10 and score > 2) or score >= 10:
+            if score > 1:
                 self.successful_batches.append( (self.data.copy(), self.answers.copy()) )
 
         self.data.clear()
@@ -271,7 +271,7 @@ class FlappyBird:
                             pygame.image.load("assets/dead.png")]
         self.wallUp = pygame.image.load("assets/bottom.png").convert_alpha()
         self.wallDown = pygame.image.load("assets/top.png").convert_alpha()
-        self.gap = 300  #300 ez #130 hard real game
+        self.gap = 160  #300 ez #130 hard real game
         self.wallx = 400
         self.birdY = 350
         self.jump = 0
@@ -289,7 +289,7 @@ class FlappyBird:
         self.prevGameInfo = deque(maxlen=1)
         self.resetGameInfo()
         self.lastAiCommand = 0.
-        self.framerate = 10000
+        self.framerate = 60
         self.maxScore = 0
 
     def updateWalls(self):
@@ -397,7 +397,7 @@ class FlappyBird:
             
                 if (event.type == pygame.KEYUP):
                     if event.key == pygame.K_UP:
-                        self.framerate = 1000
+                        self.framerate = 3600
                     elif event.key == pygame.K_DOWN:
                         self.framerate = 60
                     elif event.key == pygame.K_s:
@@ -406,8 +406,12 @@ class FlappyBird:
                         self.ai.load()
                     elif event.key == pygame.K_TAB:
                         self.ai.trainOn = not self.ai.trainOn
+                        if not self.ai.trainOn:
+                            self.ai.successful_batches.clear()
+                            self.ai.failed_batches.clear()
+                            self.ai.maxScore = 0
                         print()
-                        print("AI " + "ON" if self.ai.trainOn else "OFF")
+                        print("AI TRAINING" + ("ON" if self.ai.trainOn else "OFF"))
 
             if(self.lastAiCommand > 0 and not self.dead):
                 self.jump = 17
