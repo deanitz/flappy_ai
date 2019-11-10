@@ -23,7 +23,7 @@ class AI:
         self.maxScore = 0
         self.trainOn = True
         self.successful_batches = deque(maxlen=100)
-        self.failed_batches = deque(maxlen=50)
+        self.failed_batches = deque(maxlen=100)
         self.createNewAi()
 
         self.activation_func = self.tanh
@@ -136,8 +136,8 @@ class AI:
             self.maxScore = score
 
         if is_dead:
-            if (2 < score):
-                self.failed_batches.append( (self.data[-10:].copy(), self.answers[-10:].copy(), score) )
+            if (1 <= score):
+                self.failed_batches.append( (self.data[-50:].copy(), self.answers[-50:].copy(), score) )
             elif (kickstart):
                 self.failed_batches.append( (self.data[0::5].copy(), self.answers[0::5].copy(), score) )
             
