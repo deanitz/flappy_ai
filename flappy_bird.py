@@ -21,6 +21,7 @@ class AI:
         self.output_size = 1
 
         self.maxScore = 0
+        self.trainOn = True
         self.successful_batches = deque(maxlen=200)
         self.failed_batches = deque(maxlen=200)
         self.createNewAi()
@@ -131,17 +132,21 @@ class AI:
         if(len(self.answers) > len(self.best_batch)):
                 self.best_batch.append( (self.data.copy(), self.answers.copy()) )
 
+        if (score > self.maxScore):
+            self.maxScore = score
+
         if is_dead:
             if (2 < score):
-                self.failed_batches.append( (self.data[-10:].copy(), self.answers[-10:].copy()) )
+                self.failed_batches.append( (self.data[-10:].copy(), self.answers[-10:].copy(), score) )
             elif (kickstart):
-                self.failed_batches.append( (self.data[0::5].copy(), self.answers[0::5].copy()) )
-
-            for _ in range(self.teach_tries):
-                for (fail_data, fail_answer) in self.failed_batches:
-                    self.trainBatch(False, 0.1, False, fail_data, fail_answer)
-                for (success_data, success_answer) in self.successful_batches:
-                    self.trainBatch(True, 0.1, False, success_data, success_answer)
+                self.failed_batches.append( (self.data[0::5].copy(), self.answers[0::5].copy(), score) )
+            
+            if self.trainOn:
+                for _ in range(self.teach_tries):
+                    for (fail_data, fail_answer, fail_score) in self.failed_batches:
+                        self.trainBatch(False, 1 / len(self.failed_batches), fail_score > 0, fail_data, fail_answer)
+                    for (success_data, success_answer) in self.successful_batches:
+                        self.trainBatch(True, 1 / len(self.successful_batches), False, success_data, success_answer)
 
             # if(len(self.successful_batches) == 0):
             #     for (success_data, success_answer) in self.best_batch:
@@ -399,6 +404,9 @@ class FlappyBird:
                         self.ai.save()
                     elif event.key == pygame.K_l:
                         self.ai.load()
+                    elif event.key == pygame.K_TAB:
+                        self.ai.trainOn = not self.ai.trainOn
+                        print("AI " + "ON" if self.ai.trainOn else "OFF")
 
             if(self.lastAiCommand > 0 and not self.dead):
                 self.jump = 17
