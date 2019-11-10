@@ -22,8 +22,8 @@ class AI:
 
         self.maxScore = 0
         self.trainOn = True
-        self.successful_batches = deque(maxlen=200)
-        self.failed_batches = deque(maxlen=200)
+        self.successful_batches = deque(maxlen=100)
+        self.failed_batches = deque(maxlen=50)
         self.createNewAi()
 
         self.activation_func = self.tanh
@@ -373,7 +373,7 @@ class FlappyBird:
             
 
     def getGameInfoForAi(self, wall_x_fix):
-        return [(self.birdY) / 1000,  (self.birdY - (self.offset + self.gap / 2)) / 1000, (self.offset + self.gap) / 1000,  (self.offset) / 1000, (self.wallx / 1000)]
+        return [(self.birdY) / 1000,  (self.birdY - (self.offset + self.gap / 2)) / 1000, (self.offset + self.gap) / 1000,  (self.offset) / 1000, ((self.wallx + self.wallUp.get_width() - 10) / 1000)]
 
     def run(self):
         clock = pygame.time.Clock()
@@ -406,6 +406,7 @@ class FlappyBird:
                         self.ai.load()
                     elif event.key == pygame.K_TAB:
                         self.ai.trainOn = not self.ai.trainOn
+                        print()
                         print("AI " + "ON" if self.ai.trainOn else "OFF")
 
             if(self.lastAiCommand > 0 and not self.dead):
