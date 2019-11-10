@@ -21,8 +21,8 @@ class AI:
         self.output_size = 1
 
         self.maxScore = 0
-        self.successful_batches = deque(maxlen=50)
-        self.failed_batches = deque(maxlen=50)
+        self.successful_batches = deque(maxlen=200)
+        self.failed_batches = deque(maxlen=200)
         self.createNewAi()
 
         self.activation_func = self.tanh
@@ -71,7 +71,7 @@ class AI:
         print()
         print("saving...")
         path = os.path.join(os.getcwd(), "Weights", "Weights")
-        np.save(path, np.array([self.weights_01_prev, self.weights_12_prev, self.weights_23_prev, self.weights_34_prev]), allow_pickle=True)
+        np.save(path, np.array([self.weights_01, self.weights_12, self.weights_23, self.weights_34]), allow_pickle=True)
         print("saving to " + str(path) + " completed")
     
     def load(self):
@@ -124,22 +124,24 @@ class AI:
 
         self.printAiInfo()
 
-        self.trainBatch(not is_dead, score, self.data, self.answers)
+        kickstart = score == 0
+
+        #self.trainBatch(not is_dead, score, kickstart, self.data[::5 if kickstart else 1], self.answers[::5 if kickstart else 1])
 
         if(len(self.answers) > len(self.best_batch)):
                 self.best_batch.append( (self.data.copy(), self.answers.copy()) )
 
         if is_dead:
             if (2 < score):
-                self.failed_batches.append( (self.data[-50:-30].copy(), self.answers[-50:-30].copy()) )
-            elif (-1 < score):
-                self.failed_batches.append( (self.data[0:].copy(), self.answers[0:].copy()) )
+                self.failed_batches.append( (self.data[-10:].copy(), self.answers[-10:].copy()) )
+            elif (kickstart):
+                self.failed_batches.append( (self.data[0::5].copy(), self.answers[0::5].copy()) )
 
             for _ in range(self.teach_tries):
                 for (fail_data, fail_answer) in self.failed_batches:
-                    self.trainBatch(False, 0.1, fail_data, fail_answer)
+                    self.trainBatch(False, 0.1, False, fail_data, fail_answer)
                 for (success_data, success_answer) in self.successful_batches:
-                    self.trainBatch(True, 0.1, success_data, success_answer)
+                    self.trainBatch(True, 0.1, False, success_data, success_answer)
 
             # if(len(self.successful_batches) == 0):
             #     for (success_data, success_answer) in self.best_batch:
@@ -152,7 +154,7 @@ class AI:
         self.answers.clear()
         #print("dead" if is_dead else "alive")
 
-    def trainBatch(self, is_positive, score, train_data, train_anwers):
+    def trainBatch(self, is_positive, score, kickstart, train_data, train_anwers):
         layer_output_error = 0
         
         batch_len = len(train_anwers)
@@ -202,7 +204,8 @@ class AI:
             
 
             goal = train_anwers[i:i+1][0]
-            goal = goal if is_positive else 2*np.random.rand(1)[0] - 1 * goal
+            if not is_positive:
+                goal = -goal if kickstart else 2*np.random.rand(1)[0] - 1 * goal
 
             layer_output_error += self.error_func(layer_4, [goal])
             
@@ -352,7 +355,7 @@ class FlappyBird:
         if (self.frame >= self.framerate):
             self.frame = 0
         
-        if((self.frame % 5) == 0 and not self.dead):
+        if((self.frame % 1) == 0 and not self.dead):
             new_info = self.getGameInfoForAi(0)
             self.prevGameInfo.append(new_info)
 
