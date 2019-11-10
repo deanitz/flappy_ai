@@ -24,7 +24,7 @@ class AI:
         self.output_func = lambda x: x
         self.error_func = self.avg_square_error
 
-        self.epochs_count = 300
+        self.epochs_count = 20
         self.epoch_size = 5000
         self.successful_batches = deque(maxlen=self.epoch_size)
         
@@ -36,10 +36,10 @@ class AI:
 
         self.teach_tries = 1
 
-        self.weights_01 = 2 * np.random.random((self.input_size, self.hidden1_size)) - 1
+        self.weights_01 = 0.2 * np.random.random((self.input_size, self.hidden1_size)) - 0.1
         self.weights_12 = 0.5 * np.random.random((self.hidden1_size,self.hidden2_size)) - 0.25
         self.weights_23 = 0.5 * np.random.random((self.hidden2_size,self.hidden3_size)) - 0.25
-        self.weights_34 = 0.2 * np.random.random((self.hidden3_size,1)) - 0.1
+        self.weights_34 = 1 * np.random.random((self.hidden3_size,1)) - 1
         print()
         print("creating new AI")
 
@@ -346,7 +346,7 @@ class FlappyBird:
                              (self.wallx, 360 + self.gap - self.offset))
             self.screen.blit(self.wallDown,
                              (self.wallx, 0 - self.gap - self.offset))
-            self.screen.blit(font.render(str(self.counter),
+            self.screen.blit(font.render(str(self.counter) + " | " + str(self.avgScore),
                                          -1,
                                          (255, 255, 255)),
                              (200, 50))
