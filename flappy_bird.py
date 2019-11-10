@@ -1,6 +1,6 @@
 import pygame
 from pygame.locals import *  # noqa
-import sys
+import os, sys
 import random
 import numpy as np
 from collections import deque
@@ -21,14 +21,14 @@ class AI:
         self.output_size = 1
 
         self.maxScore = 0
+        self.successful_batches = deque(maxlen=50)
+        self.failed_batches = deque(maxlen=50)
         self.createNewAi()
 
         self.activation_func = self.tanh
         self.activation_func_deriv = self.tanh2deriv
         self.output_func = lambda x: x
         self.error_func = self.avg_square_error
-
-        
         
         self.weights_01_prev = 2 * np.random.random((self.input_size, self.hidden1_size)) - 1
         self.weights_12_prev = 2 * np.random.random((self.hidden1_size,self.hidden2_size)) - 1
@@ -40,8 +40,8 @@ class AI:
     def createNewAi(self):
         
         self.learn_rate = 0.00005
-        self.teach_tries = 10
-        self.successful_batches = deque(maxlen=100)
+        self.teach_tries = 3
+        
         self.best_batch = deque(maxlen=1)
         self.avg_error = 0
 
@@ -66,7 +66,25 @@ class AI:
         self.printAiInfo()
 
         self.maxScore = 0
-        
+
+    def save(self):
+        print()
+        print("saving...")
+        path = os.path.join(os.getcwd(), "Weights", "Weights")
+        np.save(path, np.array([self.weights_01_prev, self.weights_12_prev, self.weights_23_prev, self.weights_34_prev]), allow_pickle=True)
+        print("saving to " + str(path) + " completed")
+    
+    def load(self):
+        print()
+        print("loading...")
+        path = os.path.join(os.getcwd(), "Weights", "Weights.npy")
+        loaded_data = np.load(path, allow_pickle=True)
+        self.weights_01 = loaded_data[0]
+        self.weights_12 = loaded_data[1]
+        self.weights_23 = loaded_data[2]
+        self.weights_34 = loaded_data[3]
+        print("loading from " + str(path) + " completed")
+
     def addGameData(self, new_data):
         prog = self.makeProg(new_data)
         if (len(prog) > 0):
@@ -96,8 +114,9 @@ class AI:
     def printAiInfo(self):
         sys.stdout.write("                                                                                                                  \r"\
             +"SBL: " + str(len(self.successful_batches))\
-                +" | MAX: " + str(self.maxScore)\
-                    +" | ERR: " + str(self.avg_error)\
+                +" | FBL: " + str(len(self.failed_batches))\
+                    +" | MAX: " + str(self.maxScore)\
+                        +" | ERR: " + str(self.avg_error)\
                 )
         return
 
@@ -111,7 +130,14 @@ class AI:
                 self.best_batch.append( (self.data.copy(), self.answers.copy()) )
 
         if is_dead:
+            if (2 < score):
+                self.failed_batches.append( (self.data[-50:-30].copy(), self.answers[-50:-30].copy()) )
+            elif (-1 < score):
+                self.failed_batches.append( (self.data[0:].copy(), self.answers[0:].copy()) )
+
             for _ in range(self.teach_tries):
+                for (fail_data, fail_answer) in self.failed_batches:
+                    self.trainBatch(False, 0.1, fail_data, fail_answer)
                 for (success_data, success_answer) in self.successful_batches:
                     self.trainBatch(True, 0.1, success_data, success_answer)
 
@@ -297,6 +323,9 @@ class FlappyBird:
             self.dead = True
         
         if not 0 < self.bird[1] < 720:
+
+            self.iterateAiCycle(True)
+
             self.bird[1] = 50
             self.birdY = 350
             self.dead = False
@@ -306,7 +335,7 @@ class FlappyBird:
             self.offset = random.randint(-110, 110)
             self.gravity = 5
 
-            self.iterateAiCycle(True)
+            
 
     def iterateAiCycle(self, is_dead):
         self.iteration += 1
@@ -358,12 +387,15 @@ class FlappyBird:
             #     self.jumpSpeed = 10
 
             
-            if (event.type == pygame.KEYDOWN):
-                if event.key == pygame.K_UP:
-                    self.framerate = 1000
-                elif event.key == pygame.K_DOWN:
-                    self.framerate = 60
-                
+                if (event.type == pygame.KEYUP):
+                    if event.key == pygame.K_UP:
+                        self.framerate = 1000
+                    elif event.key == pygame.K_DOWN:
+                        self.framerate = 60
+                    elif event.key == pygame.K_s:
+                        self.ai.save()
+                    elif event.key == pygame.K_l:
+                        self.ai.load()
 
             if(self.lastAiCommand > 0 and not self.dead):
                 self.jump = 17
@@ -377,10 +409,10 @@ class FlappyBird:
                              (self.wallx, 360 + self.gap - self.offset))
             self.screen.blit(self.wallDown,
                              (self.wallx, 0 - self.gap - self.offset))
-            self.screen.blit(font.render(str(self.counter) + " " + str(self.fitness),
+            self.screen.blit(font.render(str(self.counter) + " | " + str(self.gap),
                                          -1,
                                          (255, 255, 255)),
-                             (200, 50))
+                             (160, 50))
             if self.dead:
                 self.sprite = 2
             elif self.jump:
@@ -393,4 +425,5 @@ class FlappyBird:
             pygame.display.update()
 
 if __name__ == "__main__":
+    print(os.path.join(os.getcwd(), "Weights"))
     FlappyBird().run()
