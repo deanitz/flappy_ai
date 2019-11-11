@@ -22,8 +22,10 @@ class AI:
 
         self.maxScore = 0
         self.trainOn = False
+        self.iterations_between_training = 150
+        self.iteration_training = 0
         self.successful_batches = deque(maxlen=100)
-        self.failed_batches = deque(maxlen=100)
+        self.failed_batches = deque(maxlen=50)
         self.createNewAi()
 
         self.activation_func = self.tanh
@@ -125,7 +127,7 @@ class AI:
 
         self.printAiInfo()
 
-        kickstart = score == 0
+        kickstart = score == 0 and self.maxScore < 3
 
         #self.trainBatch(not is_dead, score, kickstart, self.data[::5 if kickstart else 1], self.answers[::5 if kickstart else 1])
 
@@ -137,21 +139,25 @@ class AI:
 
         if is_dead:
             if (1 <= score):
-                self.failed_batches.append( (self.data[-50:].copy(), self.answers[-50:].copy(), score) )
-            elif (kickstart):
-                self.failed_batches.append( (self.data[0::5].copy(), self.answers[0::5].copy(), score) )
-            
-            if self.trainOn:
-                for _ in range(self.teach_tries):
-                    for (fail_data, fail_answer, fail_score) in self.failed_batches:
-                        self.trainBatch(False, 1 / len(self.failed_batches), fail_score > 0, fail_data, fail_answer)
-                    for (success_data, success_answer) in self.successful_batches:
-                        self.trainBatch(True, 1 / len(self.successful_batches), False, success_data, success_answer)
+                self.failed_batches.append( (self.data[-50::].copy(), self.answers[-50::].copy(), score) )
+                self.failed_batches.append( (self.data[:100:3].copy(), self.answers[:100:3].copy(), score) )
+            elif (score == 0):
+                self.failed_batches.append( (self.data[0::3].copy(), self.answers[0::3].copy(), score) )
+            self.iteration_training += 3 if kickstart else 1
+            if self.iteration_training > self.iterations_between_training:
+                self.iteration_training = 0
+                if self.trainOn:
+                    for _ in range(self.teach_tries):
+                        for (fail_data, fail_answer, fail_score) in self.failed_batches:
+                            self.trainBatch(False, 1 / len(self.failed_batches) / 2, fail_score == 0, fail_data, fail_answer)
+                        for (success_data, success_answer) in self.successful_batches:
+                            self.trainBatch(True, 1 / len(self.successful_batches), False, success_data, success_answer)
 
             # if(len(self.successful_batches) == 0):
             #     for (success_data, success_answer) in self.best_batch:
             #         self.trainBatch(False, 1, success_data, success_answer)
         else:
+            self.iteration_training += 3
             if score > 1:
                 self.successful_batches.append( (self.data.copy(), self.answers.copy()) )
 
@@ -373,7 +379,7 @@ class FlappyBird:
             
 
     def getGameInfoForAi(self, wall_x_fix):
-        return [(self.birdY) / 1000,  (self.birdY - (self.offset + self.gap / 2)) / 1000, (self.offset + self.gap) / 1000,  (self.offset) / 1000, ((self.wallx + self.wallUp.get_width() - 10) / 1000)]
+        return [(self.birdY) / 1000,  (self.birdY - (self.offset + self.gap / 2)) / 1000, (self.offset + self.gap) / 1000,  (self.offset) / 1000, ((self.wallx + self.wallUp.get_width()) / 1000)]
 
     def run(self):
         clock = pygame.time.Clock()
