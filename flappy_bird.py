@@ -138,11 +138,11 @@ class AI:
             self.maxScore = score
 
         if is_dead:
-            if (1 <= score):
-                self.failed_batches.append( (self.data[-50::].copy(), self.answers[-50::].copy(), score) )
-                self.failed_batches.append( (self.data[:100:3].copy(), self.answers[:100:3].copy(), score) )
+            if (1 <= score or self.maxScore > 10):
+                self.failed_batches.append( (self.data[-10::].copy(), self.answers[-10::].copy(), score) )
+                self.failed_batches.append( (self.data[:50:].copy(), self.answers[:50:].copy(), score) )
             elif (score == 0):
-                self.failed_batches.append( (self.data[0::3].copy(), self.answers[0::3].copy(), score) )
+                self.failed_batches.append( (self.data[::2].copy(), self.answers[::2].copy(), score) )
             self.iteration_training += 3 if kickstart else 1
             if self.iteration_training > self.iterations_between_training:
                 self.iteration_training = 0
@@ -277,7 +277,7 @@ class FlappyBird:
                             pygame.image.load("assets/dead.png")]
         self.wallUp = pygame.image.load("assets/bottom.png").convert_alpha()
         self.wallDown = pygame.image.load("assets/top.png").convert_alpha()
-        self.gap = 160  #300 ez #130 hard real game
+        self.gap = 200  #300 ez #130 hard real game
         self.wallx = 400
         self.birdY = 350
         self.jump = 0
