@@ -21,7 +21,7 @@ class AI:
         self.output_size = 1
 
         self.maxScore = 0
-        self.trainOn = False
+        self.trainOn = True
         self.iterations_between_training = 300
         self.iteration_training = 0
         self.successful_batches = deque(maxlen=100)
