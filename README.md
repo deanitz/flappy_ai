@@ -1,5 +1,7 @@
 # flappy_ai
-I will try to teach custom neural network on python to play flappy bird
+It was a nice weekend spent on creating this tiny AI toy
+
+Flappy Bird classic game with added simple neural network, which tries to learn how to play in this game.
 
   - TAB key switches modes:
   1. Collect data, don't learn
